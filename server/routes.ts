@@ -2,9 +2,11 @@ import { ObjectId } from "mongodb";
 
 import { Router, getExpressRouter } from "./framework/router";
 
-import { Authing, Friending, Posting, Sessioning } from "./app";
+import { Authing, Friending, Joining, Posting, Sessioning, VerifyingIdentity } from "./app";
+import { NotFoundError } from "./concepts/errors";
 import { PostOptions } from "./concepts/posting";
 import { SessionDoc } from "./concepts/sessioning";
+import { VerificationData } from "./concepts/verifying";
 import Responses from "./responses";
 
 import { z } from "zod";
@@ -86,6 +88,8 @@ class Routes {
   @Router.post("/posts")
   async createPost(session: SessionDoc, content: string, options?: PostOptions) {
     const user = Sessioning.getUser(session);
+    // Ensure the user is verified before creating a post
+    await VerifyingIdentity.assertUserVerified(user);
     const created = await Posting.create(user, content, options);
     return { msg: created.msg, post: await Responses.post(created.post) };
   }
@@ -152,6 +156,100 @@ class Routes {
     const fromOid = (await Authing.getUserByUsername(from))._id;
     return await Friending.rejectRequest(fromOid, user);
   }
+  // Verification Routes
+  @Router.post("/verifications")
+  async submitVerification(session: SessionDoc, data: string) {
+    const userID = Sessioning.getUser(session);
+    const verificationData: VerificationData = { method: "government_id", data };
+    await VerifyingIdentity.submitVerification(userID, verificationData);
+    return { msg: "Verification submitted successfully." };
+  }  
+
+  @Router.get("/verifications/status")
+  async getVerificationStatus(session: SessionDoc) {
+    const userID = Sessioning.getUser(session);
+    const statusResult = await VerifyingIdentity.getVerificationStatus(userID);
+    return statusResult;
+  }
+
+  // for testing only
+  @Router.put("/verifications/:userID/approve")
+  async approveVerification(session: SessionDoc, userID: string) {
+    // For testing purposes, we won't check for admin privileges here.
+    const userObjectID = new ObjectId(userID);
+    await VerifyingIdentity.approveVerification(userObjectID);
+    return { msg: "Verification approved successfully." };
+  }
+
+
+  // Participation Routes
+  @Router.post("/events/:id/join")
+  async joinEvent(session: SessionDoc, id: string) {
+    const userID = Sessioning.getUser(session);
+    const eventID = new ObjectId(id);
+    // Ensure the event exists
+    const event = await Posting.posts.readOne({ _id: eventID });
+    if (!event) {
+      throw new NotFoundError("Event not found.");
+    }
+    await Joining.joinActivity(userID, eventID);
+    return { msg: "Successfully joined the event." };
+  }
+
+  @Router.delete("/events/:id/join")
+  async leaveEvent(session: SessionDoc, id: string) {
+    const userID = Sessioning.getUser(session);
+    const eventID = new ObjectId(id);
+    const result = await Joining.leaveActivity(userID, eventID);
+    return result;
+  }
+
+  // Retrieves participants of an event
+  @Router.get("/events/:id/participants")
+  async getEventParticipants(id: string) {
+    const eventID = new ObjectId(id);
+    const participantIDs = await Joining.getParticipants(eventID);
+    const participants = await Authing.idsToUsernames(participantIDs);
+    return participants;
+  }
+
+  // Retrieves events that a user has joined.
+  @Router.get("/users/:username/events")
+  async getUserEvents(username: string) {
+    const user = await Authing.getUserByUsername(username);
+    const eventIDs = await Joining.getActivitiesForUser(user._id);
+    const events = await Posting.posts.readMany({ _id: { $in: eventIDs } });
+    return Responses.posts(events);
+  }
+
+  // Endorsement Routes
+  @Router.post("/users/:username/endorsements")
+  async endorseUser(session: SessionDoc, username: string, skill: string) {
+  }
+
+  @Router.delete("/users/:username/endorsements")
+  async removeEndorsement(session: SessionDoc, username: string, skill: string) {
+  }
+
+  @Router.get("/users/:username/endorsements")
+  async getUserEndorsements(username: string) {
+  }
+
+  // Location Sharing Routes
+
+  @Router.post("/location/share")
+  async shareLocation(session: SessionDoc, latitude: number, longitude: number) {
+  }
+
+  @Router.delete("/location/share")
+  async stopSharingLocation(session: SessionDoc) {
+  }
+
+  @Router.get("/users/:username/location")
+  async getUserLocation(session: SessionDoc, username: string) {
+  }
+
+
 }
 
 /** The web app. */

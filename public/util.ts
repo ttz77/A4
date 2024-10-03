@@ -74,11 +74,56 @@ const operations: Operation[] = [
     method: "PATCH",
     fields: { id: "input", content: "input", options: { backgroundColor: "input" } },
   },
+  // {
+  //   name: "Delete Post",
+  //   endpoint: "/api/posts/:id",
+  //   method: "DELETE",
+  //   fields: { id: "input" },
+  // },
+  // --- New Verifying Operations ---
   {
-    name: "Delete Post",
-    endpoint: "/api/posts/:id",
+    name: "Submit Verification",
+    endpoint: "/api/verifications",
+    method: "POST",
+    fields: { data: "input" },
+  },
+  {
+    name: "Get Verification Status",
+    endpoint: "/api/verifications/status",
+    method: "GET",
+    fields: {},
+  },
+  {
+    name: "Approve Verification (Testing)",
+    endpoint: "/api/verifications/:userID/approve",
+    method: "PUT",
+    fields: { userID: "input" },
+  },
+
+  // --- New Joining (Participation) Operations ---
+  {
+    name: "Join Event",
+    endpoint: "/api/events/:id/join",
+    method: "POST",
+    fields: { id: "input" },
+  },
+  {
+    name: "Leave Event",
+    endpoint: "/api/events/:id/join",
     method: "DELETE",
     fields: { id: "input" },
+  },
+  {
+    name: "Get Event Participants",
+    endpoint: "/api/events/:id/participants",
+    method: "GET",
+    fields: { id: "input" },
+  },
+  {
+    name: "Get User Events",
+    endpoint: "/api/users/:username/events",
+    method: "GET",
+    fields: { username: "input" },
   },
   //
   // ...
