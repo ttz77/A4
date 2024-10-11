@@ -125,6 +125,88 @@ const operations: Operation[] = [
     method: "GET",
     fields: { username: "input" },
   },
+
+  // Endorsement Operations
+  {
+    name: "Endorse User",
+    endpoint: "/api/users/:username/endorsements",
+    method: "POST",
+    fields: { username: "input", skill: "input" },
+  },
+  {
+    name: "Remove Endorsement",
+    endpoint: "/api/users/:username/endorsements",
+    method: "DELETE",
+    fields: { username: "input", skill: "input" },
+  },
+  {
+    name: "Get User Endorsements",
+    endpoint: "/api/users/:username/endorsements",
+    method: "GET",
+    fields: { username: "input" },
+  },
+
+// --- New Location Sharing Operations ---
+{
+  name: "Share Location",
+  endpoint: "/api/location/share",
+  method: "POST",
+  fields: { latitude: "input", longitude: "input" },
+},
+{
+  name: "Stop Sharing Location",
+  endpoint: "/api/location/share",
+  method: "DELETE",
+  fields: {},
+},
+{
+  name: "Get User Location",
+  endpoint: "/api/users/:username/location",
+  method: "GET",
+  fields: { username: "input" },
+},
+{
+  name: "Enable Location Sharing",
+  endpoint: "/api/location/enable",
+  method: "POST",
+  fields: {},
+},
+{
+  name: "Disable Location Sharing",
+  endpoint: "/api/location/disable",
+  method: "POST",
+  fields: {},
+},
+{
+  name: "Get Sharing Status",
+  endpoint: "/api/location/sharing-status",
+  method: "GET",
+  fields: {},
+},
+{
+  name: "Add Trusted Contact",
+  endpoint: "/api/location/trusted-contacts",
+  method: "POST",
+  fields: { contactUsername: "input" },
+},
+{
+  name: "Remove Trusted Contact",
+  endpoint: "/api/location/trusted-contacts/:contactUsername",
+  method: "DELETE",
+  fields: { contactUsername: "input" },
+},
+{
+  name: "Get Trusted Contacts",
+  endpoint: "/api/location/trusted-contacts",
+  method: "GET",
+  fields: {},
+},
+{
+  name: "Get Trusted Contacts Locations",
+  endpoint: "/api/location/trusted-contacts/locations",
+  method: "GET",
+  fields: {},
+},
   //
   // ...
   //

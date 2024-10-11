@@ -2,7 +2,7 @@ import { ObjectId } from "mongodb";
 
 import { Router, getExpressRouter } from "./framework/router";
 
-import { Authing, Friending, Joining, Posting, Sessioning, VerifyingIdentity } from "./app";
+import { Authing, Friending, Joining, Posting, Sessioning, VerifyingIdentity, Endorsing, LocationSharing } from "./app";
 import { NotFoundError } from "./concepts/errors";
 import { PostOptions } from "./concepts/posting";
 import { SessionDoc } from "./concepts/sessioning";
@@ -223,30 +223,157 @@ class Routes {
   }
 
   // Endorsement Routes
+
   @Router.post("/users/:username/endorsements")
   async endorseUser(session: SessionDoc, username: string, skill: string) {
+    const endorserID = Sessioning.getUser(session);
+    const endorsedUser = await Authing.getUserByUsername(username);
+    await Endorsing.endorseUser(endorserID, endorsedUser._id, skill);
+    return { msg: `Successfully endorsed ${username} for ${skill}.` };
   }
 
   @Router.delete("/users/:username/endorsements")
   async removeEndorsement(session: SessionDoc, username: string, skill: string) {
+    const endorserID = Sessioning.getUser(session);
+    const endorsedUser = await Authing.getUserByUsername(username);
+    await Endorsing.removeEndorsement(endorserID, endorsedUser._id, skill);
+    return { msg: `Removed endorsement of ${username} for ${skill}.` };
   }
 
   @Router.get("/users/:username/endorsements")
   async getUserEndorsements(username: string) {
+    const user = await Authing.getUserByUsername(username);
+    const skills = await Endorsing.getEndorsedSkills(user._id);
+    return { username, skills };
   }
 
   // Location Sharing Routes
 
+  /**
+   * Share or update a user's location.
+   */
   @Router.post("/location/share")
   async shareLocation(session: SessionDoc, latitude: number, longitude: number) {
+    const userID = Sessioning.getUser(session);
+    await LocationSharing.shareLocation(userID, latitude, longitude);
+    return { msg: "Location shared successfully." };
   }
 
+  /**
+   * Stop sharing a user's location.
+   */
   @Router.delete("/location/share")
   async stopSharingLocation(session: SessionDoc) {
+    const userID = Sessioning.getUser(session);
+    await LocationSharing.stopSharingLocation(userID);
+    return { msg: "Stopped sharing location." };
   }
 
+  /**
+   * Get a user's shared location.
+   */
   @Router.get("/users/:username/location")
   async getUserLocation(session: SessionDoc, username: string) {
+    const requestingUserID = Sessioning.getUser(session);
+    const user = await Authing.getUserByUsername(username);
+
+    // Optional: Check if the requesting user has permission to view the location
+    // For simplicity, we'll assume all users can view each other's locations if shared.
+
+    const location = await LocationSharing.getLocation(user._id);
+    return {
+      username,
+      latitude: location.latitude,
+      longitude: location.longitude,
+      timestamp: location.timestamp,
+    };
+  }
+
+  /**
+   * Enable location sharing for the current user.
+   */
+  @Router.post("/location/enable")
+  async enableLocationSharing(session: SessionDoc) {
+    const userID = Sessioning.getUser(session);
+    await LocationSharing.enableLocationSharing(userID);
+    return { msg: "Location sharing enabled." };
+  }
+
+  /**
+   * Disable location sharing for the current user.
+   */
+  @Router.post("/location/disable")
+  async disableLocationSharing(session: SessionDoc) {
+    const userID = Sessioning.getUser(session);
+    await LocationSharing.disableLocationSharing(userID);
+    return { msg: "Location sharing disabled." };
+  }
+
+  /**
+   * Add a trusted contact for the current user.
+   */
+  @Router.post("/location/trusted-contacts")
+  async addTrustedContact(session: SessionDoc, contactUsername: string) {
+    const userID = Sessioning.getUser(session);
+    const contact = await Authing.getUserByUsername(contactUsername);
+    if (!contact) {
+      throw new NotFoundError("Contact user not found.");
+    }
+    await LocationSharing.addTrustedContact(userID, contact._id);
+    return { msg: `Trusted contact ${contactUsername} added.` };
+  }
+
+  /**
+   * Remove a trusted contact for the current user.
+   */
+  @Router.delete("/location/trusted-contacts/:contactUsername")
+  async removeTrustedContact(session: SessionDoc, contactUsername: string) {
+    const userID = Sessioning.getUser(session);
+    const contact = await Authing.getUserByUsername(contactUsername);
+    if (!contact) {
+      throw new NotFoundError("Contact user not found.");
+    }
+    await LocationSharing.removeTrustedContact(userID, contact._id);
+    return { msg: `Trusted contact ${contactUsername} removed.` };
+  }
+
+  /**
+   * Get all trusted contacts for the current user.
+   */
+  @Router.get("/location/trusted-contacts")
+  async getTrustedContacts(session: SessionDoc) {
+    const userID = Sessioning.getUser(session);
+    const contacts = await LocationSharing.getTrustedContacts(userID);
+    // Convert ObjectIds to usernames
+    const contactUsernames = await Authing.idsToUsernames(contacts);
+    return { contacts: contactUsernames };
+  }
+
+  /**
+   * Get the current location sharing status of the current user.
+   */
+  @Router.get("/location/sharing-status")
+  async getSharingStatus(session: SessionDoc) {
+    const userID = Sessioning.getUser(session);
+    const status = await LocationSharing.getSharingStatus(userID);
+    return { enabled: status };
+  }
+
+  /**
+   * Get current locations of all trusted contacts for the current user.
+   */
+  @Router.get("/location/trusted-contacts/locations")
+  async getTrustedContactsLocations(session: SessionDoc) {
+    const userID = Sessioning.getUser(session);
+    const locations = await LocationSharing.getTrustedContactsLocations(userID);
+    // Optionally, map to a more client-friendly format
+    const formattedLocations = locations.map(loc => ({
+      userID: loc.userID,
+      latitude: loc.latitude,
+      longitude: loc.longitude,
+      timestamp: loc.timestamp,
+    }));
+    return { locations: formattedLocations };
   }
 
 
