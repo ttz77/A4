@@ -100,6 +100,13 @@ const operations: Operation[] = [
     fields: { userID: "input" },
   },
 
+  {
+    name: "Reject Verification (Testing)",
+    endpoint: "/api/verifications/:userID/reject",
+    method: "PUT",
+    fields: { "userID": "input" }
+  },
+
   // --- New Joining (Participation) Operations ---
   {
     name: "Join Event",

@@ -125,7 +125,7 @@ export default class LocationSharingConcept {
       { $set: { enabled: false } },
       { upsert: true }
     );
-    // Optionally, stop sharing location when disabled
+    // stop sharing location when disabled
     await this.stopSharingLocation(userID);
     return { msg: "Location sharing disabled." };
   }

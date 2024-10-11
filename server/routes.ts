@@ -156,7 +156,14 @@ class Routes {
     const fromOid = (await Authing.getUserByUsername(from))._id;
     return await Friending.rejectRequest(fromOid, user);
   }
+
   // Verification Routes
+
+  /**
+   * Submit verification data for the current user.
+   * @param data - Verification data (e.g., government ID information).
+   * @returns A success message.
+   */
   @Router.post("/verifications")
   async submitVerification(session: SessionDoc, data: string) {
     const userID = Sessioning.getUser(session);
@@ -165,6 +172,10 @@ class Routes {
     return { msg: "Verification submitted successfully." };
   }  
 
+  /**
+   * Get the verification status of the current user.
+   * @returns The verification status: 'verified', 'unverified', or 'pending'.
+   */
   @Router.get("/verifications/status")
   async getVerificationStatus(session: SessionDoc) {
     const userID = Sessioning.getUser(session);
@@ -172,17 +183,38 @@ class Routes {
     return statusResult;
   }
 
-  // for testing only
+  /**
+   * Approve a user's verification
+   * @param userID - The ID of the user to approve.
+   * @returns A success message.
+   */
   @Router.put("/verifications/:userID/approve")
   async approveVerification(session: SessionDoc, userID: string) {
-    // For testing purposes, we won't check for admin privileges here.
     const userObjectID = new ObjectId(userID);
     await VerifyingIdentity.approveVerification(userObjectID);
     return { msg: "Verification approved successfully." };
   }
 
+  /**
+   * Reject a user's verification 
+   * @param userID - The ID of the user to reject.
+   * @returns A success message.
+   */
+    @Router.put("/verifications/:userID/reject")
+    async rejectVerification(session: SessionDoc, userID: string) {
+      const userObjectID = new ObjectId(userID);
+      await VerifyingIdentity.rejectVerification(userObjectID);
+      return { msg: "Verification rejected successfully." };
+    }
 
   // Participation Routes
+
+  /**
+   * Join an event.
+   * @param id - The ID of the event to join.
+   * @returns A success message.
+   * @throws NotFoundError if the event does not exist.
+   */
   @Router.post("/events/:id/join")
   async joinEvent(session: SessionDoc, id: string) {
     const userID = Sessioning.getUser(session);
@@ -196,15 +228,24 @@ class Routes {
     return { msg: "Successfully joined the event." };
   }
 
+  /**
+   * Leave an event.
+   * @param id - The ID of the event to leave.
+   * @returns A success message.
+   */
   @Router.delete("/events/:id/join")
   async leaveEvent(session: SessionDoc, id: string) {
     const userID = Sessioning.getUser(session);
     const eventID = new ObjectId(id);
     const result = await Joining.leaveActivity(userID, eventID);
-    return result;
+    return { msg: "Successfully left the event." };
   }
 
-  // Retrieves participants of an event
+  /**
+   * Retrieve participants of an event.
+   * @param id - The ID of the event.
+   * @returns A list of participant usernames.
+   */
   @Router.get("/events/:id/participants")
   async getEventParticipants(id: string) {
     const eventID = new ObjectId(id);
@@ -213,7 +254,11 @@ class Routes {
     return participants;
   }
 
-  // Retrieves events that a user has joined.
+  /**
+   * Retrieve events that a user has joined.
+   * @param username - The username of the user.
+   * @returns A list of events.
+   */
   @Router.get("/users/:username/events")
   async getUserEvents(username: string) {
     const user = await Authing.getUserByUsername(username);
@@ -224,6 +269,12 @@ class Routes {
 
   // Endorsement Routes
 
+  /**
+   * Endorse a user for a skill.
+   * @param username - The username of the user to endorse.
+   * @param skill - The skill to endorse.
+   * @returns A success message.
+   */
   @Router.post("/users/:username/endorsements")
   async endorseUser(session: SessionDoc, username: string, skill: string) {
     const endorserID = Sessioning.getUser(session);
@@ -232,6 +283,12 @@ class Routes {
     return { msg: `Successfully endorsed ${username} for ${skill}.` };
   }
 
+  /**
+   * Remove an endorsement from a user.
+   * @param username - The username of the user.
+   * @param skill - The skill endorsement to remove.
+   * @returns A success message.
+   */
   @Router.delete("/users/:username/endorsements")
   async removeEndorsement(session: SessionDoc, username: string, skill: string) {
     const endorserID = Sessioning.getUser(session);
@@ -240,6 +297,11 @@ class Routes {
     return { msg: `Removed endorsement of ${username} for ${skill}.` };
   }
 
+  /**
+   * Get endorsements for a user.
+   * @param username - The username of the user.
+   * @returns An object containing the username and their endorsed skills.
+   */
   @Router.get("/users/:username/endorsements")
   async getUserEndorsements(username: string) {
     const user = await Authing.getUserByUsername(username);
@@ -250,7 +312,11 @@ class Routes {
   // Location Sharing Routes
 
   /**
-   * Share or update a user's location.
+   * Share or update the current user's location.
+   * @param latitude - The latitude of the location.
+   * @param longitude - The longitude of the location.
+   * @returns A success message.
+   * @throws NotAllowedError if location sharing is disabled.
    */
   @Router.post("/location/share")
   async shareLocation(session: SessionDoc, latitude: number, longitude: number) {
@@ -260,7 +326,8 @@ class Routes {
   }
 
   /**
-   * Stop sharing a user's location.
+   * Stop sharing the current user's location.
+   * @returns A success message.
    */
   @Router.delete("/location/share")
   async stopSharingLocation(session: SessionDoc) {
@@ -271,15 +338,13 @@ class Routes {
 
   /**
    * Get a user's shared location.
+   * @param username - The username of the user whose location to retrieve.
+   * @returns An object containing the user's location data.
    */
   @Router.get("/users/:username/location")
   async getUserLocation(session: SessionDoc, username: string) {
     const requestingUserID = Sessioning.getUser(session);
     const user = await Authing.getUserByUsername(username);
-
-    // Optional: Check if the requesting user has permission to view the location
-    // For simplicity, we'll assume all users can view each other's locations if shared.
-
     const location = await LocationSharing.getLocation(user._id);
     return {
       username,
@@ -291,6 +356,7 @@ class Routes {
 
   /**
    * Enable location sharing for the current user.
+   * @returns A success message.
    */
   @Router.post("/location/enable")
   async enableLocationSharing(session: SessionDoc) {
@@ -301,6 +367,7 @@ class Routes {
 
   /**
    * Disable location sharing for the current user.
+   * @returns A success message.
    */
   @Router.post("/location/disable")
   async disableLocationSharing(session: SessionDoc) {
@@ -311,6 +378,9 @@ class Routes {
 
   /**
    * Add a trusted contact for the current user.
+   * @param contactUsername - The username of the contact to add.
+   * @returns A success message.
+   * @throws NotFoundError if the contact user does not exist.
    */
   @Router.post("/location/trusted-contacts")
   async addTrustedContact(session: SessionDoc, contactUsername: string) {
@@ -325,6 +395,9 @@ class Routes {
 
   /**
    * Remove a trusted contact for the current user.
+   * @param contactUsername - The username of the contact to remove.
+   * @returns A success message.
+   * @throws NotFoundError if the contact user does not exist.
    */
   @Router.delete("/location/trusted-contacts/:contactUsername")
   async removeTrustedContact(session: SessionDoc, contactUsername: string) {
@@ -339,6 +412,7 @@ class Routes {
 
   /**
    * Get all trusted contacts for the current user.
+   * @returns An object containing a list of trusted contact usernames.
    */
   @Router.get("/location/trusted-contacts")
   async getTrustedContacts(session: SessionDoc) {
@@ -351,6 +425,7 @@ class Routes {
 
   /**
    * Get the current location sharing status of the current user.
+   * @returns An object indicating whether location sharing is enabled.
    */
   @Router.get("/location/sharing-status")
   async getSharingStatus(session: SessionDoc) {
@@ -361,12 +436,12 @@ class Routes {
 
   /**
    * Get current locations of all trusted contacts for the current user.
+   * @returns An object containing a list of locations of trusted contacts.
    */
   @Router.get("/location/trusted-contacts/locations")
   async getTrustedContactsLocations(session: SessionDoc) {
     const userID = Sessioning.getUser(session);
     const locations = await LocationSharing.getTrustedContactsLocations(userID);
-    // Optionally, map to a more client-friendly format
     const formattedLocations = locations.map(loc => ({
       userID: loc.userID,
       latitude: loc.latitude,
